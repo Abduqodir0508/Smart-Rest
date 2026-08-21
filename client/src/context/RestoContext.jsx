@@ -2,6 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import api from '../services/api';
 import { playNotificationSound } from '../utils/helpers';
 import { DEFAULT_TABLES, DEFAULT_MENU, DEFAULT_ORDERS, DEFAULT_SETTINGS } from '../utils/defaultData';
+import { 
+  broadcastRealtimeUpdate, 
+  subscribeToRealtimeUpdates, 
+  initSupabase, 
+  getCloudConfig 
+} from '../services/realtime';
 
 const RestoContext = createContext();
 
@@ -11,7 +17,7 @@ const LS_MENU = 'smart_resto_menu_v1';
 const LS_ORDERS = 'smart_resto_orders_v1';
 const LS_SETTINGS = 'smart_resto_settings_v1';
 
-// Yordamchi: LocalStorage dan yuklash yoki default berish
+// Yordamchi: LocalStorage dan yuklash
 const getInitial = (key, fallback) => {
   try {
     const saved = localStorage.getItem(key);
@@ -26,7 +32,7 @@ const getInitial = (key, fallback) => {
   return fallback;
 };
 
-// Client-side statistika hisoblash (Offline / Vercel uchun)
+// Client-side statistika hisoblash
 const computeLocalStats = (orders, menu, tables) => {
   const paidOrders = orders.filter(o => o.paymentStatus === 'paid');
   const activeOrders = orders.filter(o => o.paymentStatus === 'unpaid');
@@ -95,7 +101,7 @@ const computeLocalStats = (orders, menu, tables) => {
 };
 
 export const RestoProvider = ({ children }) => {
-  // Asosiy ma'lumotlar (Boshlang'ich holatda hech qachon bo'sh bo'lmaydi)
+  // Asosiy ma'lumotlar
   const [tables, setTables] = useState(() => getInitial(LS_TABLES, DEFAULT_TABLES));
   const [menu, setMenu] = useState(() => getInitial(LS_MENU, DEFAULT_MENU));
   const [orders, setOrders] = useState(() => getInitial(LS_ORDERS, DEFAULT_ORDERS));
@@ -107,7 +113,7 @@ export const RestoProvider = ({ children }) => {
   ));
 
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('pos'); // 'pos', 'kitchen', 'admin', 'orders'
+  const [activeTab, setActiveTab] = useState('pos');
 
   // POS Savatcha holati
   const [selectedTable, setSelectedTable] = useState(null);
@@ -125,7 +131,6 @@ export const RestoProvider = ({ children }) => {
 
   // Toast bildirishnoma
   const [toast, setToast] = useState(null);
-  const previousPendingCountRef = useRef(0);
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -147,7 +152,75 @@ export const RestoProvider = ({ children }) => {
     }
   }, [tables, menu, orders, settings]);
 
-  // Serverdan yuklash yoki offline/localStorage ma'lumotlaridan foydalanish
+  // Real-time listener: Barcha ulangan qurilmalar (Oshxona, Kassa, Ofitsiant) o'rtasida jonli sinxronizatsiya
+  useEffect(() => {
+    const cloudCfg = getCloudConfig();
+    if (cloudCfg.supabaseUrl && cloudCfg.supabaseAnonKey) {
+      initSupabase(cloudCfg.supabaseUrl, cloudCfg.supabaseAnonKey, (msg) => {
+        handleRealtimeEvent(msg);
+      });
+    }
+
+    const unsubscribe = subscribeToRealtimeUpdates((msg) => {
+      handleRealtimeEvent(msg);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Real-time xabarni qabul qilish va state-ga qo'llash
+  const handleRealtimeEvent = (msg) => {
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'NEW_ORDER') {
+      const newOrder = msg.payload.order;
+      setOrders(prev => {
+        const exists = prev.some(o => o.id === newOrder.id);
+        if (exists) return prev.map(o => o.id === newOrder.id ? newOrder : o);
+        return [newOrder, ...prev];
+      });
+
+      // Stolni band qilish
+      setTables(prev => prev.map(t => t.id === newOrder.tableId ? { ...t, status: 'occupied', activeOrderId: newOrder.id } : t));
+
+      // Oshxona va Kassa uchun audio qo'ng'iroq
+      playNotificationSound();
+      showToast(`Oshxonaga yangi buyurtma keldi! (${newOrder.tableNumber})`, "warning");
+    }
+
+    if (msg.type === 'ORDER_UPDATED') {
+      const updatedOrder = msg.payload.order;
+      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+      playNotificationSound();
+      showToast(`Buyurtma #${updatedOrder.orderNumber} yangilandi`, "info");
+    }
+
+    if (msg.type === 'STATUS_UPDATED') {
+      const { orderId, status } = msg.payload;
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o));
+      playNotificationSound();
+      showToast(`Buyurtma holati "${status}" ga o'zgartirildi`, "info");
+    }
+
+    if (msg.type === 'ORDER_PAID') {
+      const { orderId, closedOrder, tableId } = msg.payload;
+      setOrders(prev => prev.map(o => o.id === orderId ? closedOrder : o));
+      setTables(prev => prev.map(t => t.id === tableId ? { ...t, status: 'empty', activeOrderId: null } : t));
+      showToast(`Stol ${closedOrder.tableNumber} hisobi yopildi`, "success");
+    }
+
+    if (msg.type === 'STORAGE_SYNC') {
+      // Boshqa tabdan ma'lumotlar yangilanganda
+      const latestOrders = getInitial(LS_ORDERS, null);
+      const latestTables = getInitial(LS_TABLES, null);
+      if (latestOrders) setOrders(latestOrders);
+      if (latestTables) setTables(latestTables);
+    }
+  };
+
+  // Serverdan yuklash
   const loadAllData = useCallback(async () => {
     try {
       const [tablesRes, menuRes, ordersRes, statsRes, settingsRes] = await Promise.all([
@@ -166,13 +239,6 @@ export const RestoProvider = ({ children }) => {
       }
       if (ordersRes && ordersRes.success && ordersRes.data) {
         setOrders(ordersRes.data);
-
-        const pendingCount = ordersRes.data.filter(o => o.status === 'pending').length;
-        if (previousPendingCountRef.current > 0 && pendingCount > previousPendingCountRef.current) {
-          playNotificationSound();
-          showToast("Oshxonaga yangi buyurtma keldi!", "warning");
-        }
-        previousPendingCountRef.current = pendingCount;
       }
       if (statsRes && statsRes.success && statsRes.data) {
         setStats(statsRes.data);
@@ -181,17 +247,13 @@ export const RestoProvider = ({ children }) => {
         setSettings(settingsRes.data);
       }
     } catch (error) {
-      console.log("Serverga ulanish offline rejimida:", error.message);
+      console.log("Serverga ulanish offline:", error.message);
     }
   }, []);
 
-  // Dastlabki yuklash va har 8 soniyada yangilanish
+  // Dastlabki yuklash
   useEffect(() => {
     loadAllData();
-    const interval = setInterval(() => {
-      loadAllData();
-    }, 8000);
-    return () => clearInterval(interval);
   }, [loadAllData]);
 
   // Stol tanlanganda
@@ -248,7 +310,7 @@ export const RestoProvider = ({ children }) => {
     });
   };
 
-  // Savatchadan kamaytirish / o'chirish
+  // Savatchadan kamaytirish
   const removeFromCart = (menuItemId) => {
     setCart(prevCart => {
       const existing = prevCart.find(item => item.menuItemId === menuItemId);
@@ -262,7 +324,6 @@ export const RestoProvider = ({ children }) => {
     });
   };
 
-  // Savatchadagi to'liq miqdorni belgilash
   const updateCartQuantity = (menuItemId, qty) => {
     const quantity = Math.max(0, parseInt(qty) || 0);
     if (quantity === 0) {
@@ -272,18 +333,16 @@ export const RestoProvider = ({ children }) => {
     }
   };
 
-  // Taom izohini yangilash
   const updateCartItemNote = (menuItemId, note) => {
     setCart(prev => prev.map(item => item.menuItemId === menuItemId ? { ...item, note } : item));
   };
 
-  // Savatchani tozalash
   const clearCart = () => {
     setCart([]);
     setOrderNotes("");
   };
 
-  // Buyurtmani jo'natish (Server + Local fallback)
+  // Buyurtmani jo'natish (Real-time Broadcast bilan)
   const submitOrder = async () => {
     if (!selectedTable) {
       showToast("Iltimos, avval stolni tanlang!", "error");
@@ -312,13 +371,10 @@ export const RestoProvider = ({ children }) => {
             waiterName,
             notes: orderNotes
           });
-        } catch (e) {
-          console.log("Server offline, local yangilandi");
-        }
+        } catch (e) {}
 
-        // Local state yangilash
-        setOrders(prev => prev.map(o => o.id === selectedTable.activeOrderId ? {
-          ...o,
+        const updatedOrder = {
+          ...orders.find(o => o.id === selectedTable.activeOrderId),
           items: cart,
           subtotal,
           totalCost,
@@ -331,8 +387,12 @@ export const RestoProvider = ({ children }) => {
           waiterName,
           notes: orderNotes,
           updatedAt: new Date().toISOString()
-        } : o));
+        };
 
+        setOrders(prev => prev.map(o => o.id === selectedTable.activeOrderId ? updatedOrder : o));
+
+        // Real-time tarqatish
+        broadcastRealtimeUpdate('ORDER_UPDATED', { order: updatedOrder });
         showToast("Buyurtma muvaffaqiyatli yangilandi", "success");
       } else {
         // Yangi buyurtma
@@ -369,13 +429,14 @@ export const RestoProvider = ({ children }) => {
             discountRate,
             notes: orderNotes
           });
-        } catch (e) {
-          console.log("Server offline, local yangilandi");
-        }
+        } catch (e) {}
 
         setOrders(prev => [newOrder, ...prev]);
         setTables(prev => prev.map(t => t.id === selectedTable.id ? { ...t, status: 'occupied', activeOrderId: newId } : t));
         setSelectedTable(prev => ({ ...prev, status: 'occupied', activeOrderId: newId }));
+
+        // Real-time tarqatish (Oshxona va barcha qurilmalarga)
+        broadcastRealtimeUpdate('NEW_ORDER', { order: newOrder });
         showToast(`Yangi buyurtma #${newOrder.orderNumber} oshxonaga jo'natildi`, "success");
       }
 
@@ -385,11 +446,14 @@ export const RestoProvider = ({ children }) => {
     }
   };
 
-  // Oshxona statusini yangilash
+  // Oshxona statusini yangilash (Real-time Broadcast bilan)
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       await api.updateOrderStatus(orderId, newStatus).catch(() => null);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o));
+
+      // Real-time tarqatish
+      broadcastRealtimeUpdate('STATUS_UPDATED', { orderId, status: newStatus });
       showToast(`Buyurtma holati yangilandi`, "success");
       playNotificationSound();
     } catch (err) {
@@ -397,14 +461,17 @@ export const RestoProvider = ({ children }) => {
     }
   };
 
-  // To'lovni amalga oshirish
+  // To'lovni amalga oshirish (Real-time Broadcast bilan)
   const processPayment = async (orderId, paymentMethod, discount) => {
     try {
       await api.payOrder(orderId, { paymentMethod, discountRate: discount }).catch(() => null);
 
       let closedOrder = null;
+      let targetTableId = null;
+
       setOrders(prev => prev.map(o => {
         if (o.id === orderId) {
+          targetTableId = o.tableId;
           const disc = discount !== undefined ? discount : o.discountRate;
           const discAmount = Math.round((o.subtotal * disc) / 100);
           const totalAmount = o.subtotal + o.serviceChargeAmount - discAmount;
@@ -430,6 +497,15 @@ export const RestoProvider = ({ children }) => {
       // Stolni bo'shatish
       setTables(prev => prev.map(t => t.activeOrderId === orderId ? { ...t, status: 'empty', activeOrderId: null } : t));
 
+      // Real-time tarqatish
+      if (closedOrder) {
+        broadcastRealtimeUpdate('ORDER_PAID', { 
+          orderId, 
+          closedOrder, 
+          tableId: targetTableId || closedOrder.tableId 
+        });
+      }
+
       showToast("Hisob yopildi va stol bo'shatildi!", "success");
       setPaymentOrder(null);
       if (closedOrder) setReceiptOrder(closedOrder);
@@ -440,7 +516,6 @@ export const RestoProvider = ({ children }) => {
     }
   };
 
-  // Savatcha summalari
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartServiceAmount = Math.round((cartSubtotal * serviceChargeRate) / 100);
   const cartDiscountAmount = Math.round((cartSubtotal * discountRate) / 100);

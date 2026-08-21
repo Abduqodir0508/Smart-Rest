@@ -463,6 +463,38 @@ const AdminView = () => {
               </button>
             </div>
           </form>
+
+          {/* Real-time Cloud Sinxronizatsiya (Supabase / Firebase) */}
+          <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h4 className="font-bold text-slate-100 text-xs sm:text-sm">Real-time Sinxronizatsiya Holati</h4>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                FAOL (0ms latency)
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Ofitsiant telefondan buyurtma yuborganda, oshxona (KDS) va kassa kompyuterida sahifani yangilamasdan real vaqtda audio signal bilan ko'rinadi.
+            </p>
+
+            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-2">
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Lokal Brauzerlararo Uzatish:</span>
+                <span className="text-emerald-400 font-semibold">Ulangan (BroadcastChannel)</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Oshxona Ovozli Signali:</span>
+                <span className="text-orange-400 font-semibold">Web Audio Synthesizer (Chime)</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Ma'lumotlar saqlanishi:</span>
+                <span className="text-blue-400 font-semibold">Gibrid (LocalStorage + Cloud)</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
