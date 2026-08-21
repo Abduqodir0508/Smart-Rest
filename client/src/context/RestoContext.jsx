@@ -1,37 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import api from '../services/api';
 import { playNotificationSound } from '../utils/helpers';
-import { DEFAULT_TABLES, DEFAULT_MENU, DEFAULT_ORDERS, DEFAULT_SETTINGS } from '../utils/defaultData';
-import { 
-  broadcastRealtimeUpdate, 
-  subscribeToRealtimeUpdates 
-} from '../services/realtime';
+import { DEFAULT_TABLES, DEFAULT_MENU, DEFAULT_SETTINGS } from '../utils/defaultData';
+import {
+  fetchSupabaseTables,
+  fetchSupabaseFoods,
+  fetchSupabaseOrders,
+  createSupabaseOrder,
+  updateSupabaseOrder,
+  paySupabaseOrder,
+  subscribeToSupabaseRealtimeDB
+} from '../services/supabase';
+import { broadcastRealtimeUpdate, subscribeToRealtimeUpdates } from '../services/realtime';
 
 const RestoContext = createContext();
 
-// LocalStorage kalitlari
-const LS_TABLES = 'smart_resto_tables_v1';
-const LS_MENU = 'smart_resto_menu_v1';
-const LS_ORDERS = 'smart_resto_orders_v1';
-const LS_SETTINGS = 'smart_resto_settings_v1';
-
-// Yordamchi: LocalStorage dan yuklash
-const getInitial = (key, fallback) => {
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      if (typeof parsed === 'object' && parsed !== null && Object.keys(parsed).length > 0) return parsed;
-    }
-  } catch (e) {
-    console.warn(`LocalStorage o'qishda xatolik (${key}):`, e);
-  }
-  return fallback;
-};
-
-// Client-side statistika hisoblash
-const computeLocalStats = (orders, menu, tables) => {
+// Statistika hisoblash funksiyasi
+const computeStats = (orders, menu, tables) => {
   const paidOrders = orders.filter(o => o.paymentStatus === 'paid');
   const activeOrders = orders.filter(o => o.paymentStatus === 'unpaid');
 
@@ -99,21 +83,17 @@ const computeLocalStats = (orders, menu, tables) => {
 };
 
 export const RestoProvider = ({ children }) => {
-  // Asosiy ma'lumotlar
-  const [tables, setTables] = useState(() => getInitial(LS_TABLES, DEFAULT_TABLES));
-  const [menu, setMenu] = useState(() => getInitial(LS_MENU, DEFAULT_MENU));
-  const [orders, setOrders] = useState(() => getInitial(LS_ORDERS, DEFAULT_ORDERS));
-  const [settings, setSettings] = useState(() => getInitial(LS_SETTINGS, DEFAULT_SETTINGS));
-  const [stats, setStats] = useState(() => computeLocalStats(
-    getInitial(LS_ORDERS, DEFAULT_ORDERS),
-    getInitial(LS_MENU, DEFAULT_MENU),
-    getInitial(LS_TABLES, DEFAULT_TABLES)
-  ));
+  // To'g'ridan-to'g'ri Supabase dan yuklanadigan holatlar
+  const [tables, setTables] = useState(DEFAULT_TABLES);
+  const [menu, setMenu] = useState(DEFAULT_MENU);
+  const [orders, setOrders] = useState([]);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [stats, setStats] = useState(() => computeStats([], DEFAULT_MENU, DEFAULT_TABLES));
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pos');
 
-  // POS Savatcha holati
+  // POS Savatcha
   const [selectedTable, setSelectedTable] = useState(null);
   const [cart, setCart] = useState([]);
   const [serviceChargeRate, setServiceChargeRate] = useState(10);
@@ -121,7 +101,7 @@ export const RestoProvider = ({ children }) => {
   const [waiterName, setWaiterName] = useState("Alisher");
   const [orderNotes, setOrderNotes] = useState("");
 
-  // Modallar holati
+  // Modallar
   const [receiptOrder, setReceiptOrder] = useState(null);
   const [paymentOrder, setPaymentOrder] = useState(null);
   const [menuModalData, setMenuModalData] = useState(null);
@@ -137,115 +117,86 @@ export const RestoProvider = ({ children }) => {
     }, 4000);
   };
 
-  // LocalStorage ga doimiy saqlash
-  useEffect(() => {
+  // 1. Supabase Bazasidan Ma'lumotlarni Yuklash
+  const loadAllData = useCallback(async () => {
     try {
-      localStorage.setItem(LS_TABLES, JSON.stringify(tables));
-      localStorage.setItem(LS_MENU, JSON.stringify(menu));
-      localStorage.setItem(LS_ORDERS, JSON.stringify(orders));
-      localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
-      setStats(computeLocalStats(orders, menu, tables));
-    } catch (e) {
-      console.warn("LocalStorage saqlashda xatolik:", e);
-    }
-  }, [tables, menu, orders, settings]);
+      setLoading(true);
+      const [fetchedTables, fetchedFoods, fetchedOrders] = await Promise.all([
+        fetchSupabaseTables(),
+        fetchSupabaseFoods(),
+        fetchSupabaseOrders()
+      ]);
 
-  // Real-time listener: Barcha ulangan qurilmalar (Oshxona, Kassa, Ofitsiant) o'rtasida jonli sinxronizatsiya
+      if (fetchedTables && fetchedTables.length > 0) setTables(fetchedTables);
+      if (fetchedFoods && fetchedFoods.length > 0) setMenu(fetchedFoods);
+      if (fetchedOrders) setOrders(fetchedOrders);
+
+      setStats(computeStats(fetchedOrders || [], fetchedFoods || DEFAULT_MENU, fetchedTables || DEFAULT_TABLES));
+    } catch (err) {
+      console.warn("Supabase yuklashda xatolik:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 2. Dastlabki yuklash va Supabase Realtime tinglovchisi
   useEffect(() => {
-    const unsubscribe = subscribeToRealtimeUpdates((msg) => {
-      handleRealtimeEvent(msg);
+    loadAllData();
+
+    // Supabase Postgres Changes Realtime tinglash
+    const unsubscribeSupabase = subscribeToSupabaseRealtimeDB(
+      // Table o'zgarganda (masalan: telefon orqali band qilinganda)
+      (eventType, updatedTable) => {
+        setTables(prev => {
+          const exists = prev.some(t => t.id === updatedTable.id);
+          if (exists) {
+            return prev.map(t => t.id === updatedTable.id ? { ...t, ...updatedTable } : t);
+          }
+          return [...prev, updatedTable];
+        });
+      },
+      // Order o'zgarganda (yangi buyurtma, status o'zgarishi, to'lov)
+      (eventType, orderData) => {
+        if (eventType === 'INSERT') {
+          setOrders(prev => {
+            const exists = prev.some(o => o.id === orderData.id);
+            if (exists) return prev;
+            return [orderData, ...prev];
+          });
+          // Yangi buyurtma kelganda ovozli signal (Ding chime)
+          playNotificationSound();
+          showToast(`⚡ Yangi buyurtma #${orderData.orderNumber} (${orderData.tableNumber})`, "warning");
+        } else if (eventType === 'UPDATE') {
+          setOrders(prev => prev.map(o => o.id === orderData.id ? { ...o, ...orderData } : o));
+          playNotificationSound();
+          showToast(`Buyurtma #${orderData.orderNumber} holati yangilandi`, "info");
+        } else if (eventType === 'DELETE') {
+          setOrders(prev => prev.filter(o => o.id !== orderData.id));
+        }
+      },
+      // Food o'zgarganda (narx yoki stop-list)
+      (eventType, foodData) => {
+        setMenu(prev => prev.map(m => m.id === foodData.id ? { ...m, ...foodData } : m));
+      }
+    );
+
+    // Cross-tab broadcast listener
+    const unsubscribeBroadcast = subscribeToRealtimeUpdates((msg) => {
+      if (msg && msg.type === 'NEW_ORDER') {
+        playNotificationSound();
+      }
     });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribeSupabase();
+      unsubscribeBroadcast();
     };
-  }, []);
-
-  // Real-time xabarni qabul qilish va state-ga qo'llash
-  const handleRealtimeEvent = (msg) => {
-    if (!msg || !msg.type) return;
-
-    if (msg.type === 'NEW_ORDER') {
-      const newOrder = msg.payload.order;
-      setOrders(prev => {
-        const exists = prev.some(o => o.id === newOrder.id);
-        if (exists) return prev.map(o => o.id === newOrder.id ? newOrder : o);
-        return [newOrder, ...prev];
-      });
-
-      // Stolni band qilish
-      setTables(prev => prev.map(t => t.id === newOrder.tableId ? { ...t, status: 'occupied', activeOrderId: newOrder.id } : t));
-
-      // Oshxona va Kassa uchun audio qo'ng'iroq
-      playNotificationSound();
-      showToast(`Oshxonaga yangi buyurtma keldi! (${newOrder.tableNumber})`, "warning");
-    }
-
-    if (msg.type === 'ORDER_UPDATED') {
-      const updatedOrder = msg.payload.order;
-      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-      playNotificationSound();
-      showToast(`Buyurtma #${updatedOrder.orderNumber} yangilandi`, "info");
-    }
-
-    if (msg.type === 'STATUS_UPDATED') {
-      const { orderId, status } = msg.payload;
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o));
-      playNotificationSound();
-      showToast(`Buyurtma holati "${status}" ga o'zgartirildi`, "info");
-    }
-
-    if (msg.type === 'ORDER_PAID') {
-      const { orderId, closedOrder, tableId } = msg.payload;
-      setOrders(prev => prev.map(o => o.id === orderId ? closedOrder : o));
-      setTables(prev => prev.map(t => t.id === tableId ? { ...t, status: 'empty', activeOrderId: null } : t));
-      showToast(`Stol ${closedOrder.tableNumber} hisobi yopildi`, "success");
-    }
-
-    if (msg.type === 'STORAGE_SYNC') {
-      // Boshqa tabdan ma'lumotlar yangilanganda
-      const latestOrders = getInitial(LS_ORDERS, null);
-      const latestTables = getInitial(LS_TABLES, null);
-      if (latestOrders) setOrders(latestOrders);
-      if (latestTables) setTables(latestTables);
-    }
-  };
-
-  // Serverdan yuklash
-  const loadAllData = useCallback(async () => {
-    try {
-      const [tablesRes, menuRes, ordersRes, statsRes, settingsRes] = await Promise.all([
-        api.getTables().catch(() => null),
-        api.getMenu().catch(() => null),
-        api.getOrders().catch(() => null),
-        api.getStats().catch(() => null),
-        api.getSettings().catch(() => null)
-      ]);
-
-      if (tablesRes && tablesRes.success && tablesRes.data && tablesRes.data.length > 0) {
-        setTables(tablesRes.data);
-      }
-      if (menuRes && menuRes.success && menuRes.data && menuRes.data.length > 0) {
-        setMenu(menuRes.data);
-      }
-      if (ordersRes && ordersRes.success && ordersRes.data) {
-        setOrders(ordersRes.data);
-      }
-      if (statsRes && statsRes.success && statsRes.data) {
-        setStats(statsRes.data);
-      }
-      if (settingsRes && settingsRes.success && settingsRes.data && Object.keys(settingsRes.data).length > 0) {
-        setSettings(settingsRes.data);
-      }
-    } catch (error) {
-      console.log("Serverga ulanish offline:", error.message);
-    }
-  }, []);
-
-  // Dastlabki yuklash
-  useEffect(() => {
-    loadAllData();
   }, [loadAllData]);
+
+  // Har safar orders o'zgarganda statistikani qayta hisoblash
+  useEffect(() => {
+    setStats(computeStats(orders, menu, tables));
+  }, [orders, menu, tables]);
 
   // Stol tanlanganda
   const handleSelectTable = (table) => {
@@ -256,7 +207,7 @@ export const RestoProvider = ({ children }) => {
     }
 
     if (table.activeOrderId) {
-      const activeOrder = orders.find(o => o.id === table.activeOrderId);
+      const activeOrder = orders.find(o => o.id === table.activeOrderId && o.paymentStatus === 'unpaid');
       if (activeOrder) {
         setCart(activeOrder.items.map(item => ({ ...item })));
         setServiceChargeRate(activeOrder.serviceChargeRate ?? 10);
@@ -333,7 +284,7 @@ export const RestoProvider = ({ children }) => {
     setOrderNotes("");
   };
 
-  // Buyurtmani jo'natish (Real-time Broadcast bilan)
+  // 3. Buyurtmani Supabase-ga jo'natish
   const submitOrder = async () => {
     if (!selectedTable) {
       showToast("Iltimos, avval stolni tanlang!", "error");
@@ -354,43 +305,28 @@ export const RestoProvider = ({ children }) => {
     try {
       if (selectedTable.activeOrderId) {
         // Tahrirlash
-        try {
-          await api.updateOrder(selectedTable.activeOrderId, {
-            items: cart,
-            serviceChargeRate,
-            discountRate,
-            waiterName,
-            notes: orderNotes
-          });
-        } catch (e) {}
-
-        const updatedOrder = {
-          ...orders.find(o => o.id === selectedTable.activeOrderId),
+        const updated = await updateSupabaseOrder(selectedTable.activeOrderId, {
           items: cart,
           subtotal,
-          totalCost,
           serviceChargeRate,
           serviceChargeAmount,
           discountRate,
           discountAmount,
           totalAmount,
+          totalCost,
           netProfit,
           waiterName,
-          notes: orderNotes,
-          updatedAt: new Date().toISOString()
-        };
+          notes: orderNotes
+        });
 
-        setOrders(prev => prev.map(o => o.id === selectedTable.activeOrderId ? updatedOrder : o));
-
-        // Real-time tarqatish
-        broadcastRealtimeUpdate('ORDER_UPDATED', { order: updatedOrder });
-        showToast("Buyurtma muvaffaqiyatli yangilandi", "success");
+        setOrders(prev => prev.map(o => o.id === selectedTable.activeOrderId ? updated : o));
+        broadcastRealtimeUpdate('ORDER_UPDATED', { order: updated });
+        showToast("Buyurtma Supabase bazasida yangilandi", "success");
       } else {
-        // Yangi buyurtma
-        const newId = orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 101;
-        const newOrder = {
-          id: newId,
-          orderNumber: `ORD-${newId}`,
+        // Yangi buyurtma yaratish
+        const tempOrderNum = `ORD-${Date.now().toString().slice(-4)}`;
+        const createdOrder = await createSupabaseOrder({
+          orderNumber: tempOrderNum,
           tableId: selectedTable.id,
           tableNumber: selectedTable.number,
           waiterName: waiterName || "Alisher",
@@ -404,31 +340,15 @@ export const RestoProvider = ({ children }) => {
           totalAmount,
           netProfit,
           status: "pending",
-          paymentStatus: "unpaid",
-          paymentMethod: null,
-          notes: orderNotes,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
+          notes: orderNotes
+        });
 
-        try {
-          await api.createOrder({
-            tableId: selectedTable.id,
-            waiterName,
-            items: cart,
-            serviceChargeRate,
-            discountRate,
-            notes: orderNotes
-          });
-        } catch (e) {}
+        setOrders(prev => [createdOrder, ...prev]);
+        setTables(prev => prev.map(t => t.id === selectedTable.id ? { ...t, status: 'occupied', activeOrderId: createdOrder.id } : t));
+        setSelectedTable(prev => ({ ...prev, status: 'occupied', activeOrderId: createdOrder.id }));
 
-        setOrders(prev => [newOrder, ...prev]);
-        setTables(prev => prev.map(t => t.id === selectedTable.id ? { ...t, status: 'occupied', activeOrderId: newId } : t));
-        setSelectedTable(prev => ({ ...prev, status: 'occupied', activeOrderId: newId }));
-
-        // Real-time tarqatish (Oshxona va barcha qurilmalarga)
-        broadcastRealtimeUpdate('NEW_ORDER', { order: newOrder });
-        showToast(`Yangi buyurtma #${newOrder.orderNumber} oshxonaga jo'natildi`, "success");
+        broadcastRealtimeUpdate('NEW_ORDER', { order: createdOrder });
+        showToast(`Yangi buyurtma #${createdOrder.orderNumber} oshxonaga jo'natildi`, "success");
       }
 
       playNotificationSound();
@@ -437,65 +357,28 @@ export const RestoProvider = ({ children }) => {
     }
   };
 
-  // Oshxona statusini yangilash (Real-time Broadcast bilan)
+  // 4. Oshxona statusini Supabase-da yangilash
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      await api.updateOrderStatus(orderId, newStatus).catch(() => null);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o));
-
-      // Real-time tarqatish
+      const updated = await updateSupabaseOrder(orderId, { status: newStatus });
+      setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
       broadcastRealtimeUpdate('STATUS_UPDATED', { orderId, status: newStatus });
-      showToast(`Buyurtma holati yangilandi`, "success");
+      showToast(`Holat yangilandi: ${newStatus}`, "success");
       playNotificationSound();
     } catch (err) {
       showToast("Statusni yangilashda xatolik", "error");
     }
   };
 
-  // To'lovni amalga oshirish (Real-time Broadcast bilan)
+  // 5. To'lovni amalga oshirish va stolni bo'shatish
   const processPayment = async (orderId, paymentMethod, discount) => {
     try {
-      await api.payOrder(orderId, { paymentMethod, discountRate: discount }).catch(() => null);
+      const closedOrder = await paySupabaseOrder(orderId, selectedTable?.id, paymentMethod, Number(discount));
 
-      let closedOrder = null;
-      let targetTableId = null;
+      setOrders(prev => prev.map(o => o.id === orderId ? closedOrder : o));
+      setTables(prev => prev.map(t => t.id === closedOrder.tableId ? { ...t, status: 'empty', activeOrderId: null } : t));
 
-      setOrders(prev => prev.map(o => {
-        if (o.id === orderId) {
-          targetTableId = o.tableId;
-          const disc = discount !== undefined ? discount : o.discountRate;
-          const discAmount = Math.round((o.subtotal * disc) / 100);
-          const totalAmount = o.subtotal + o.serviceChargeAmount - discAmount;
-          const netProfit = totalAmount - o.totalCost;
-
-          closedOrder = {
-            ...o,
-            paymentStatus: "paid",
-            paymentMethod,
-            status: "served",
-            discountRate: disc,
-            discountAmount: discAmount,
-            totalAmount,
-            netProfit,
-            closedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          return closedOrder;
-        }
-        return o;
-      }));
-
-      // Stolni bo'shatish
-      setTables(prev => prev.map(t => t.activeOrderId === orderId ? { ...t, status: 'empty', activeOrderId: null } : t));
-
-      // Real-time tarqatish
-      if (closedOrder) {
-        broadcastRealtimeUpdate('ORDER_PAID', { 
-          orderId, 
-          closedOrder, 
-          tableId: targetTableId || closedOrder.tableId 
-        });
-      }
+      broadcastRealtimeUpdate('ORDER_PAID', { orderId, closedOrder, tableId: closedOrder.tableId });
 
       showToast("Hisob yopildi va stol bo'shatildi!", "success");
       setPaymentOrder(null);

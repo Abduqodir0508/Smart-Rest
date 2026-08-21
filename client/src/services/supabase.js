@@ -1,110 +1,273 @@
 import { createClient } from '@supabase/supabase-js';
+import { DEFAULT_TABLES, DEFAULT_MENU } from '../utils/defaultData';
 
-// Environment variables yoki LocalStorage dan Supabase konfiguratsiyasini olish
-const LS_SUPABASE_URL = 'smart_resto_supabase_url';
-const LS_SUPABASE_KEY = 'smart_resto_supabase_key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://btoiruovarvoccygwmmf.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_rOxCGFs24X1LjLd3jRfs0Q_cdZRm_gB';
 
-export const getSupabaseCredentials = () => {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});
 
-  const localUrl = typeof window !== 'undefined' ? localStorage.getItem(LS_SUPABASE_URL) || '' : '';
-  const localKey = typeof window !== 'undefined' ? localStorage.getItem(LS_SUPABASE_KEY) || '' : '';
+// Yordamchi: Object kalitlarini camelCase <-> snake_case moslashtirish
+const normalizeTable = (row) => ({
+  id: row.id,
+  number: row.number,
+  zone: row.zone || 'Asosiy Zal',
+  capacity: row.capacity || 4,
+  status: row.status || 'empty',
+  activeOrderId: row.active_order_id || row.activeOrderId || null
+});
 
-  return {
-    url: localUrl || envUrl,
-    key: localKey || envKey
+const normalizeFood = (row) => ({
+  id: row.id,
+  name: row.name,
+  category: row.category || 'Milliy taomlar',
+  price: Number(row.price) || 0,
+  costPrice: Number(row.cost_price || row.costPrice) || Math.round((row.price || 0) * 0.45),
+  prepTime: Number(row.prep_time || row.prepTime) || 15,
+  available: row.available !== false,
+  description: row.description || '',
+  image: row.image || null
+});
+
+const normalizeOrder = (row) => ({
+  id: row.id,
+  orderNumber: row.order_number || row.orderNumber || `ORD-${row.id}`,
+  tableId: row.table_id || row.tableId,
+  tableNumber: row.table_number || row.tableNumber || '',
+  waiterName: row.waiter_name || row.waiterName || 'Alisher',
+  items: typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []),
+  subtotal: Number(row.subtotal) || 0,
+  serviceChargeRate: Number(row.service_charge_rate ?? row.serviceChargeRate ?? 10),
+  serviceChargeAmount: Number(row.service_charge_amount ?? row.serviceChargeAmount ?? 0),
+  discountRate: Number(row.discount_rate ?? row.discountRate ?? 0),
+  discountAmount: Number(row.discount_amount ?? row.discountAmount ?? 0),
+  totalAmount: Number(row.total_amount ?? row.totalAmount ?? 0),
+  totalCost: Number(row.total_cost ?? row.totalCost ?? 0),
+  netProfit: Number(row.net_profit ?? row.netProfit ?? 0),
+  status: row.status || 'pending',
+  paymentStatus: row.payment_status || row.paymentStatus || 'unpaid',
+  paymentMethod: row.payment_method || row.paymentMethod || null,
+  notes: row.notes || '',
+  createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+  updatedAt: row.updated_at || row.updatedAt || new Date().toISOString()
+});
+
+// ==========================================
+// 1. SUPABASE DAN YUKLASH (FETCHING)
+// ==========================================
+
+export const fetchSupabaseTables = async () => {
+  try {
+    const { data, error } = await supabase.from('tables').select('*').order('id', { ascending: true });
+    if (error) throw error;
+    if (data && data.length > 0) {
+      return data.map(normalizeTable);
+    }
+    // Agar baza bo'sh bo'lsa, birlamchi stollarni joylash (Auto-Seed)
+    const seedData = DEFAULT_TABLES.map(t => ({
+      id: t.id,
+      number: t.number,
+      zone: t.zone,
+      capacity: t.capacity,
+      status: t.status,
+      active_order_id: t.activeOrderId
+    }));
+    await supabase.from('tables').insert(seedData).catch(() => null);
+    return DEFAULT_TABLES;
+  } catch (err) {
+    console.warn("Supabase tables xatolik:", err.message);
+    return DEFAULT_TABLES;
+  }
+};
+
+export const fetchSupabaseFoods = async () => {
+  try {
+    // Avval 'foods' jadvalini tekshirish
+    let { data, error } = await supabase.from('foods').select('*').order('id', { ascending: true });
+    if (error) {
+      // Agar 'foods' bo'lmasa, 'menu' jadvalini tekshirish
+      const menuRes = await supabase.from('menu').select('*').order('id', { ascending: true });
+      data = menuRes.data;
+      error = menuRes.error;
+    }
+    if (error) throw error;
+    if (data && data.length > 0) {
+      return data.map(normalizeFood);
+    }
+    // Agar baza bo'sh bo'lsa, birlamchi taomlarni kiritish
+    const seedFoods = DEFAULT_MENU.map(m => ({
+      id: m.id,
+      name: m.name,
+      category: m.category,
+      price: m.price,
+      cost_price: m.costPrice,
+      prep_time: m.prepTime,
+      available: m.available,
+      description: m.description
+    }));
+    await supabase.from('foods').insert(seedFoods).catch(() => null);
+    return DEFAULT_MENU;
+  } catch (err) {
+    console.warn("Supabase foods xatolik:", err.message);
+    return DEFAULT_MENU;
+  }
+};
+
+export const fetchSupabaseOrders = async () => {
+  try {
+    const { data, error } = await supabase.from('orders').select('*').order('id', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(normalizeOrder);
+  } catch (err) {
+    console.warn("Supabase orders xatolik:", err.message);
+    return [];
+  }
+};
+
+// ==========================================
+// 2. SUPABASE AMALLARI (INSERT / UPDATE)
+// ==========================================
+
+export const createSupabaseOrder = async (orderData) => {
+  const payload = {
+    order_number: orderData.orderNumber,
+    table_id: orderData.tableId,
+    table_number: orderData.tableNumber,
+    waiter_name: orderData.waiterName,
+    items: orderData.items,
+    subtotal: orderData.subtotal,
+    service_charge_rate: orderData.serviceChargeRate,
+    service_charge_amount: orderData.serviceChargeAmount,
+    discount_rate: orderData.discountRate,
+    discount_amount: orderData.discountAmount,
+    total_amount: orderData.totalAmount,
+    total_cost: orderData.totalCost,
+    net_profit: orderData.netProfit,
+    status: orderData.status || 'pending',
+    payment_status: 'unpaid',
+    notes: orderData.notes || '',
+    created_at: new Date().toISOString()
   };
+
+  const { data, error } = await supabase.from('orders').insert(payload).select().single();
+  if (error) throw error;
+
+  const insertedOrder = normalizeOrder(data);
+
+  // Stolni band qilish
+  await supabase.from('tables').update({
+    status: 'occupied',
+    active_order_id: insertedOrder.id
+  }).eq('id', orderData.tableId);
+
+  return insertedOrder;
 };
 
-export const saveSupabaseCredentials = (url, key) => {
-  if (typeof window !== 'undefined') {
-    if (url) localStorage.setItem(LS_SUPABASE_URL, url.trim());
-    else localStorage.removeItem(LS_SUPABASE_URL);
+export const updateSupabaseOrder = async (orderId, updates) => {
+  const payload = {};
+  if (updates.items) payload.items = updates.items;
+  if (updates.subtotal !== undefined) payload.subtotal = updates.subtotal;
+  if (updates.serviceChargeRate !== undefined) payload.service_charge_rate = updates.serviceChargeRate;
+  if (updates.serviceChargeAmount !== undefined) payload.service_charge_amount = updates.serviceChargeAmount;
+  if (updates.discountRate !== undefined) payload.discount_rate = updates.discountRate;
+  if (updates.discountAmount !== undefined) payload.discount_amount = updates.discountAmount;
+  if (updates.totalAmount !== undefined) payload.total_amount = updates.totalAmount;
+  if (updates.totalCost !== undefined) payload.total_cost = updates.totalCost;
+  if (updates.netProfit !== undefined) payload.net_profit = updates.netProfit;
+  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.paymentStatus !== undefined) payload.payment_status = updates.paymentStatus;
+  if (updates.paymentMethod !== undefined) payload.payment_method = updates.paymentMethod;
+  if (updates.notes !== undefined) payload.notes = updates.notes;
+  payload.updated_at = new Date().toISOString();
 
-    if (key) localStorage.setItem(LS_SUPABASE_KEY, key.trim());
-    else localStorage.removeItem(LS_SUPABASE_KEY);
+  const { data, error } = await supabase.from('orders').update(payload).eq('id', orderId).select().single();
+  if (error) throw error;
+  return normalizeOrder(data);
+};
+
+export const paySupabaseOrder = async (orderId, tableId, paymentMethod, discountRate) => {
+  const { data: currentOrder } = await supabase.from('orders').select('*').eq('id', orderId).single();
+  const normalized = normalizeOrder(currentOrder);
+
+  const discRate = discountRate !== undefined ? discountRate : normalized.discountRate;
+  const discAmount = Math.round((normalized.subtotal * discRate) / 100);
+  const finalTotal = normalized.subtotal + normalized.serviceChargeAmount - discAmount;
+  const netProfit = finalTotal - normalized.totalCost;
+
+  const { data, error } = await supabase.from('orders').update({
+    payment_status: 'paid',
+    payment_method: paymentMethod,
+    status: 'served',
+    discount_rate: discRate,
+    discount_amount: discAmount,
+    total_amount: finalTotal,
+    net_profit: netProfit,
+    updated_at: new Date().toISOString()
+  }).eq('id', orderId).select().single();
+
+  if (error) throw error;
+
+  // Stolni bo'shatish
+  if (tableId) {
+    await supabase.from('tables').update({
+      status: 'empty',
+      active_order_id: null
+    }).eq('id', tableId);
   }
+
+  return normalizeOrder(data);
 };
 
-let supabaseInstance = null;
-let activeChannel = null;
+export const updateSupabaseTableStatus = async (tableId, status, activeOrderId = null) => {
+  const { data, error } = await supabase.from('tables').update({
+    status,
+    active_order_id: activeOrderId
+  }).eq('id', tableId).select().single();
 
-// Supabase mijozini yaratish va Realtime kanaliga ulanish
-export const getSupabaseClient = () => {
-  const { url, key } = getSupabaseCredentials();
-
-  if (!url || !key) return null;
-
-  if (!supabaseInstance) {
-    try {
-      supabaseInstance = createClient(url, key, {
-        realtime: {
-          params: {
-            eventsPerSecond: 10
-          }
-        }
-      });
-    } catch (err) {
-      console.warn("Supabase mijozini ishga tushirishda xatolik:", err);
-      return null;
-    }
-  }
-
-  return supabaseInstance;
+  if (error) throw error;
+  return normalizeTable(data);
 };
 
-// Realtime xabarlar uzatish (Ofitsiant -> Oshxona / Kassa)
-export const broadcastToSupabase = (event, payload) => {
-  const client = getSupabaseClient();
-  if (!client) return false;
+// ==========================================
+// 3. REALTIME POSTGRES_CHANGES LISTENER
+// ==========================================
 
-  try {
-    if (!activeChannel) {
-      activeChannel = client.channel('smart_resto_channel');
-      activeChannel.subscribe();
-    }
-
-    activeChannel.send({
-      type: 'broadcast',
-      event: event || 'smart_resto_sync',
-      payload: {
-        ...payload,
-        senderTime: Date.now()
+export const subscribeToSupabaseRealtimeDB = (onTableChange, onOrderChange, onFoodChange) => {
+  const channel = supabase
+    .channel('smart-resto-db-changes')
+    // 1. Orders o'zgarishlarini tinglash
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+      console.log('⚡ Realtime Order Event:', payload.eventType, payload.new);
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        onOrderChange(payload.eventType, normalizeOrder(payload.new));
+      } else if (payload.eventType === 'DELETE') {
+        onOrderChange('DELETE', { id: payload.old.id });
       }
+    })
+    // 2. Tables o'zgarishlarini tinglash
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, (payload) => {
+      console.log('⚡ Realtime Table Event:', payload.eventType, payload.new);
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        onTableChange(payload.eventType, normalizeTable(payload.new));
+      }
+    })
+    // 3. Foods / Menu o'zgarishlarini tinglash
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'foods' }, (payload) => {
+      console.log('⚡ Realtime Food Event:', payload.eventType, payload.new);
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        onFoodChange(payload.eventType, normalizeFood(payload.new));
+      }
+    })
+    .subscribe((status) => {
+      console.log('📡 Supabase Database Realtime Ulanish Holati:', status);
     });
-    return true;
-  } catch (err) {
-    console.warn("Supabase orqali uzatishda xatolik:", err);
-    return false;
-  }
-};
 
-// Realtime xabarlarni tinglash
-export const subscribeSupabaseRealtime = (callback) => {
-  const client = getSupabaseClient();
-  if (!client) return () => {};
-
-  try {
-    const channel = client.channel('smart_resto_channel');
-
-    channel
-      .on('broadcast', { event: 'smart_resto_sync' }, (data) => {
-        if (data && data.payload) {
-          callback(data.payload);
-        }
-      })
-      .subscribe((status) => {
-        console.log("📡 Supabase Realtime ulanish holati:", status);
-      });
-
-    activeChannel = channel;
-
-    return () => {
-      client.removeChannel(channel);
-    };
-  } catch (err) {
-    console.warn("Supabase tinglovchi ulanishida xatolik:", err);
-    return () => {};
-  }
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
