@@ -4,9 +4,7 @@ import { playNotificationSound } from '../utils/helpers';
 import { DEFAULT_TABLES, DEFAULT_MENU, DEFAULT_ORDERS, DEFAULT_SETTINGS } from '../utils/defaultData';
 import { 
   broadcastRealtimeUpdate, 
-  subscribeToRealtimeUpdates, 
-  initSupabase, 
-  getCloudConfig 
+  subscribeToRealtimeUpdates 
 } from '../services/realtime';
 
 const RestoContext = createContext();
@@ -154,13 +152,6 @@ export const RestoProvider = ({ children }) => {
 
   // Real-time listener: Barcha ulangan qurilmalar (Oshxona, Kassa, Ofitsiant) o'rtasida jonli sinxronizatsiya
   useEffect(() => {
-    const cloudCfg = getCloudConfig();
-    if (cloudCfg.supabaseUrl && cloudCfg.supabaseAnonKey) {
-      initSupabase(cloudCfg.supabaseUrl, cloudCfg.supabaseAnonKey, (msg) => {
-        handleRealtimeEvent(msg);
-      });
-    }
-
     const unsubscribe = subscribeToRealtimeUpdates((msg) => {
       handleRealtimeEvent(msg);
     });

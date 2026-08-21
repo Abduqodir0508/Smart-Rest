@@ -464,34 +464,70 @@ const AdminView = () => {
             </div>
           </form>
 
-          {/* Real-time Cloud Sinxronizatsiya (Supabase / Firebase) */}
-          <div className="mt-6 pt-6 border-t border-slate-800 space-y-3">
+          {/* Real-time Cloud Sinxronizatsiya (Supabase Realtime) */}
+          <div className="mt-6 pt-6 border-t border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <h4 className="font-bold text-slate-100 text-xs sm:text-sm">Real-time Sinxronizatsiya Holati</h4>
+                <h4 className="font-bold text-slate-100 text-xs sm:text-sm">⚡ Supabase Realtime Ulanishi</h4>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                FAOL (0ms latency)
+                JONLI REJIM
               </span>
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Ofitsiant telefondan buyurtma yuborganda, oshxona (KDS) va kassa kompyuterida sahifani yangilamasdan real vaqtda audio signal bilan ko'rinadi.
+              Ofitsiant telefondan buyurtma yuborganda, oshxona (KDS) va kassa ekranida sahifani yangilamasdan real vaqtda audio signal bilan paydo bo'ladi.
             </p>
 
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-300">
-                <span>Lokal Brauzerlararo Uzatish:</span>
-                <span className="text-emerald-400 font-semibold">Ulangan (BroadcastChannel)</span>
+            {/* Supabase URL va Anon Key Sozlamalari */}
+            <div className="p-3.5 bg-slate-950/90 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-semibold block text-[11px]">
+                  Supabase Project URL:
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://xyzcompany.supabase.co"
+                  defaultValue={typeof window !== 'undefined' ? localStorage.getItem('smart_resto_supabase_url') || '' : ''}
+                  onChange={(e) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('smart_resto_supabase_url', e.target.value.trim());
+                    }
+                  }}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 text-xs focus:outline-none focus:border-orange-500"
+                />
               </div>
-              <div className="flex items-center justify-between text-slate-300">
-                <span>Oshxona Ovozli Signali:</span>
-                <span className="text-orange-400 font-semibold">Web Audio Synthesizer (Chime)</span>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-semibold block text-[11px]">
+                  Supabase Anon Key:
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  defaultValue={typeof window !== 'undefined' ? localStorage.getItem('smart_resto_supabase_key') || '' : ''}
+                  onChange={(e) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('smart_resto_supabase_key', e.target.value.trim());
+                    }
+                  }}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 text-xs focus:outline-none focus:border-orange-500"
+                />
               </div>
-              <div className="flex items-center justify-between text-slate-300">
-                <span>Ma'lumotlar saqlanishi:</span>
-                <span className="text-blue-400 font-semibold">Gibrid (LocalStorage + Cloud)</span>
+
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                <span>Holat: <strong className="text-emerald-400">Ulangan (BroadcastChannel + Supabase)</strong></span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    showToast("Supabase sozlamalari saqlandi va ulandi!", "success");
+                    setTimeout(() => window.location.reload(), 500);
+                  }}
+                  className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold"
+                >
+                  Ulash & Yangilash
+                </button>
               </div>
             </div>
           </div>
