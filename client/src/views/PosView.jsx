@@ -141,7 +141,9 @@ const PosView = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs sm:text-sm text-slate-100">{table.number}</span>
+                    <span className="font-extrabold text-xs sm:text-sm text-slate-100">
+                      {table.number || `${table.id}-Stol`}
+                    </span>
                     <span
                       className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
                         isBilled

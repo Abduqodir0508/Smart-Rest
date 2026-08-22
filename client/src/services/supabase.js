@@ -13,14 +13,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Yordamchi: Object kalitlarini camelCase <-> snake_case moslashtirish
-const normalizeTable = (row) => ({
-  id: row.id,
-  number: row.number,
-  zone: row.zone || 'Asosiy Zal',
-  capacity: row.capacity || 4,
-  status: row.status || 'empty',
-  activeOrderId: row.active_order_id || row.activeOrderId || null
-});
+const normalizeTable = (row) => {
+  let num = row.number || row.name || row.table_number || row.stol || row.title || row.table_name || `${row.id}-Stol`;
+  if (typeof num === 'number' || (!isNaN(num) && !String(num).toLowerCase().includes('stol') && !String(num).startsWith('T-') && !String(num).startsWith('VIP'))) {
+    num = `${num}-Stol`;
+  }
+  return {
+    id: row.id,
+    number: String(num),
+    zone: row.zone || row.room || 'Asosiy Zal',
+    capacity: row.capacity || row.seats || 4,
+    status: row.status || 'empty',
+    activeOrderId: row.active_order_id || row.activeOrderId || null
+  };
+};
 
 const normalizeFood = (row) => ({
   id: row.id,

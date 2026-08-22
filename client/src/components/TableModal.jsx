@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Save, Armchair } from 'lucide-react';
 import { useResto } from '../context/RestoContext';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 
 const ZONES = ["Asosiy Zal", "Terassa", "VIP Xona", "Bar"];
 
@@ -26,13 +26,25 @@ const TableModal = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await api.createTable(formData);
-      if (res.success) {
-        showToast(`"${formData.number}" stoli qo'shildi`, "success");
-        await loadAllData();
-        setTableModalOpen(false);
-        setFormData({ number: '', zone: 'Asosiy Zal', capacity: 4 });
+      let num = formData.number.trim();
+      if (!isNaN(num) && !num.toLowerCase().includes('stol') && !num.startsWith('T-') && !num.startsWith('VIP')) {
+        num = `${num}-Stol`;
       }
+
+      const payload = {
+        number: num,
+        zone: formData.zone,
+        capacity: Number(formData.capacity) || 4,
+        status: 'empty'
+      };
+
+      const { error } = await supabase.from('tables').insert(payload);
+      if (error) throw error;
+
+      showToast(`"${num}" stoli muvaffaqiyatli qo'shildi`, "success");
+      await loadAllData();
+      setTableModalOpen(false);
+      setFormData({ number: '', zone: 'Asosiy Zal', capacity: 4 });
     } catch (err) {
       showToast(err.message || "Stol qo'shishda xatolik", "error");
     } finally {
@@ -63,49 +75,55 @@ const TableModal = () => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Stol Raqami / Nomi <span className="text-orange-500">*</span>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              Stol Raqami yoki Nomi <span className="text-orange-400">*</span>
             </label>
             <input
               type="text"
               required
+              placeholder="Masalan: 1-Stol, VIP-3 yoki 12"
               value={formData.number}
               onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-              placeholder="Masalan: 12-Stol, T-5, VIP-3..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500"
+              className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Zal / Hudud
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              Zal / Joylashuv
             </label>
-            <select
-              value={formData.zone}
-              onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-orange-500"
-            >
+            <div className="grid grid-cols-2 gap-2">
               {ZONES.map((zone) => (
-                <option key={zone} value={zone}>
+                <button
+                  type="button"
+                  key={zone}
+                  onClick={() => setFormData({ ...formData, zone })}
+                  className={`py-2 px-3 rounded-xl border text-xs font-semibold text-center transition-all ${
+                    formData.zone === zone
+                      ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
                   {zone}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Sig'imi (O'rinlar soni)
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              Sig'imi (Kishi soni)
             </label>
             <input
               type="number"
               min="1"
               max="50"
+              required
               value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-orange-500"
+              onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 1 })}
+              className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono"
             />
           </div>
 
