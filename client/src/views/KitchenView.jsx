@@ -21,34 +21,26 @@ const KitchenView = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Xavfsiz status yangilash funksiyasi (order.id va order_number bo'yicha)
-  const handleStatusChange = async (order, nextStatus) => {
+  // Status yangilash funksiyasi (Number(orderId) bilan)
+  const handleStatusChange = async (orderId, newStatus) => {
     try {
-      let query = supabase.from('orders').update({ 
-        status: nextStatus,
-        updated_at: new Date().toISOString() 
-      });
-      
-      if (order.id) {
-        query = query.eq('id', order.id);
-      } else if (order.order_number || order.orderNumber) {
-        query = query.eq('order_number', order.order_number || order.orderNumber);
+      const numericId = Number(orderId);
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', numericId);
+
+      if (error) {
+        console.error("Supabase xatolik:", error);
+        showToast("Statusni yangilashda xatolik: " + error.message, "error");
+        return;
       }
 
-      const { error } = await query;
-      if (error) throw error;
-
-      // State'ni darhol yangilash
-      setOrders(prev => prev.map(o => 
-        (o.id === order.id || o.orderNumber === order.orderNumber || o.order_number === order.order_number) 
-          ? { ...o, status: nextStatus, updatedAt: new Date().toISOString() } 
-          : o
-      ));
-
-      showToast(`Buyurtma holati "${nextStatus}" ga yangilandi`, "success");
+      setOrders(prev => prev.map(o => o.id === orderId || o.id === numericId ? { ...o, status: newStatus } : o));
+      showToast(`Status o'zgartirildi: ${newStatus}`, "success");
       playNotificationSound();
     } catch (err) {
-      console.error("Status yangilashda xatolik:", err);
+      console.error("Xatolik:", err);
       showToast("Statusni yangilashda xatolik", "error");
     }
   };
@@ -158,7 +150,7 @@ const KitchenView = () => {
 
             return (
               <div
-                key={order.id || order.orderNumber || order.order_number}
+                key={order.id}
                 className={`glass-panel rounded-2xl border flex flex-col justify-between overflow-hidden shadow-xl transition-all duration-200 ${
                   order.status === 'pending'
                     ? 'border-amber-500/40 bg-amber-500/5'
@@ -242,7 +234,7 @@ const KitchenView = () => {
 
                   {statusCfg.nextStatus && (
                     <button
-                      onClick={() => handleStatusChange(order, statusCfg.nextStatus)}
+                      onClick={() => handleStatusChange(order.id, statusCfg.nextStatus)}
                       className={`w-full py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 ${
                         order.status === 'pending'
                           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'

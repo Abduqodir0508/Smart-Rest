@@ -83,7 +83,9 @@ export const fetchSupabaseTables = async () => {
       status: t.status,
       active_order_id: t.activeOrderId
     }));
-    await supabase.from('tables').insert(seedData).catch(() => null);
+    try {
+      await supabase.from('tables').insert(seedData);
+    } catch (e) {}
     return DEFAULT_TABLES;
   } catch (err) {
     console.warn("Supabase tables xatolik:", err.message);
@@ -116,7 +118,9 @@ export const fetchSupabaseFoods = async () => {
       available: m.available,
       description: m.description
     }));
-    await supabase.from('foods').insert(seedFoods).catch(() => null);
+    try {
+      await supabase.from('foods').insert(seedFoods);
+    } catch (e) {}
     return DEFAULT_MENU;
   } catch (err) {
     console.warn("Supabase foods xatolik:", err.message);
