@@ -8,10 +8,11 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { useResto } from '../context/RestoContext';
+import { supabase } from '../services/supabase';
 import { formatTime, getElapsedMinutes, STATUS_CONFIG, playNotificationSound } from '../utils/helpers';
 
 const KitchenView = () => {
-  const { orders, updateOrderStatus } = useResto();
+  const { orders, setOrders, showToast } = useResto();
   const [filterStatus, setFilterStatus] = useState('active');
   const [, setTick] = useState(0);
 
@@ -19,6 +20,38 @@ const KitchenView = () => {
     const timer = setInterval(() => setTick(t => t + 1), 10000);
     return () => clearInterval(timer);
   }, []);
+
+  // Xavfsiz status yangilash funksiyasi (order.id va order_number bo'yicha)
+  const handleStatusChange = async (order, nextStatus) => {
+    try {
+      let query = supabase.from('orders').update({ 
+        status: nextStatus,
+        updated_at: new Date().toISOString() 
+      });
+      
+      if (order.id) {
+        query = query.eq('id', order.id);
+      } else if (order.order_number || order.orderNumber) {
+        query = query.eq('order_number', order.order_number || order.orderNumber);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      // State'ni darhol yangilash
+      setOrders(prev => prev.map(o => 
+        (o.id === order.id || o.orderNumber === order.orderNumber || o.order_number === order.order_number) 
+          ? { ...o, status: nextStatus, updatedAt: new Date().toISOString() } 
+          : o
+      ));
+
+      showToast(`Buyurtma holati "${nextStatus}" ga yangilandi`, "success");
+      playNotificationSound();
+    } catch (err) {
+      console.error("Status yangilashda xatolik:", err);
+      showToast("Statusni yangilashda xatolik", "error");
+    }
+  };
 
   const kitchenOrders = orders.filter(order => {
     if (filterStatus === 'active') {
@@ -119,13 +152,13 @@ const KitchenView = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {kitchenOrders.map((order) => {
-            const elapsed = getElapsedMinutes(order.createdAt);
+            const elapsed = getElapsedMinutes(order.createdAt || order.created_at);
             const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
             const isUrgent = elapsed > 20 && order.status !== 'ready' && order.status !== 'served';
 
             return (
               <div
-                key={order.id}
+                key={order.id || order.orderNumber || order.order_number}
                 className={`glass-panel rounded-2xl border flex flex-col justify-between overflow-hidden shadow-xl transition-all duration-200 ${
                   order.status === 'pending'
                     ? 'border-amber-500/40 bg-amber-500/5'
@@ -142,13 +175,13 @@ const KitchenView = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-sm sm:text-base text-slate-100">
-                          {order.tableNumber}
+                          {order.tableNumber || order.table_number}
                         </span>
                         <span className="text-[11px] font-mono font-bold text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
-                          #{order.orderNumber}
+                          #{order.orderNumber || order.order_number}
                         </span>
                       </div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">Ofitsiant: {order.waiterName || "Alisher"}</p>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">Ofitsiant: {order.waiterName || order.waiter_name || "Alisher"}</p>
                     </div>
 
                     <div className="flex flex-col items-end">
@@ -164,7 +197,7 @@ const KitchenView = () => {
                         <Clock className="w-3 h-3" />
                         <span>{elapsed} daq</span>
                       </span>
-                      <span className="text-[10px] text-slate-500 mt-0.5 font-mono">{formatTime(order.createdAt)}</span>
+                      <span className="text-[10px] text-slate-500 mt-0.5 font-mono">{formatTime(order.createdAt || order.created_at)}</span>
                     </div>
                   </div>
                 </div>
@@ -209,7 +242,7 @@ const KitchenView = () => {
 
                   {statusCfg.nextStatus && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, statusCfg.nextStatus)}
+                      onClick={() => handleStatusChange(order, statusCfg.nextStatus)}
                       className={`w-full py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 ${
                         order.status === 'pending'
                           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
