@@ -9,7 +9,8 @@ import {
   RefreshCw,
   LogOut,
   User,
-  Package
+  Package,
+  Lock
 } from 'lucide-react';
 import { useResto } from '../context/RestoContext';
 import { useAuth } from '../context/AuthContext';
@@ -120,6 +121,16 @@ const Navbar = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
             </button>
             <button
+              onClick={() => {
+                setIsLocked(true);
+                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
+              }}
+              className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg text-orange-400 border border-orange-500/30"
+              title="Qulflash"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </button>
+            <button
               onClick={() => signOut()}
               className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-rose-400 border border-rose-500/30"
               title="Chiqish"
@@ -178,6 +189,18 @@ const Navbar = () => {
               className="p-2 bg-slate-800/60 hover:bg-slate-800 rounded-lg border border-slate-700/50 text-slate-300 hover:text-orange-400 transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => {
+                setIsLocked(true);
+                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
+              }}
+              title="Qulflash"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Qulflash</span>
             </button>
 
             <button
