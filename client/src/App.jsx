@@ -14,6 +14,7 @@ import MenuItemModal from './components/MenuItemModal';
 import TableModal from './components/TableModal';
 import WaitersView from './views/WaitersView';
 import LockScreen from './views/LockScreen';
+import Footer from './components/Footer';
 import { CheckCircle, AlertCircle, Info, AlertTriangle, Loader2 } from 'lucide-react';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -86,6 +87,9 @@ const Dashboard = () => {
         {activeTab === 'orders' && <OrdersView />}
         {activeTab === 'waiters' && <WaitersView />}
       </main>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Global Modals */}
       <ReceiptModal />
