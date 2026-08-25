@@ -96,6 +96,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Chiqishda xatolik:', error.message);
     } finally {
+      localStorage.clear();
+      sessionStorage.clear();
       setUser(null);
       setSession(null);
       setLoading(false);
