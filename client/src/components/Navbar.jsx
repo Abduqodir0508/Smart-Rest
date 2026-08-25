@@ -52,18 +52,18 @@ const Navbar = () => {
       badgeColor: 'bg-amber-500 text-slate-950 font-bold animate-pulse'
     },
     {
-      id: 'products',
-      label: 'Tovarlar',
-      shortLabel: 'Tovarlar',
-      icon: Package,
-      badge: null
-    },
-    {
       id: 'orders',
       label: 'Buyurtmalar',
       shortLabel: 'Cheklar',
       icon: History,
       badge: orders.length
+    },
+    {
+      id: 'products',
+      label: 'Tovarlar',
+      shortLabel: 'Tovarlar',
+      icon: Package,
+      badge: null
     },
     {
       id: 'admin',

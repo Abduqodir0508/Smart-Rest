@@ -106,9 +106,7 @@ export default function LockScreen() {
           </button>
         </div>
         
-        <p className="text-xs text-slate-500 text-center">
-          Admin paroli: 0000 (Sinov uchun)
-        </p>
+
       </div>
     </div>
   );
