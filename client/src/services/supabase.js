@@ -139,6 +139,17 @@ export const fetchSupabaseOrders = async () => {
   }
 };
 
+export const fetchSupabaseWaiters = async () => {
+  try {
+    const { data, error } = await supabase.from('waiters').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn("Supabase waiters xatolik:", err.message);
+    return [];
+  }
+};
+
 // ==========================================
 // 2. SUPABASE AMALLARI (INSERT / UPDATE)
 // ==========================================
@@ -152,6 +163,7 @@ export const createSupabaseOrder = async (orderData) => {
     table_id: orderData.tableId,
     table_number: orderData.tableNumber,
     waiter_name: orderData.waiterName,
+    waiter_id: orderData.waiterId || null,
     items: orderData.items,
     subtotal: orderData.subtotal,
     service_charge_rate: orderData.serviceChargeRate,

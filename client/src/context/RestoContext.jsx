@@ -5,6 +5,7 @@ import {
   fetchSupabaseTables,
   fetchSupabaseFoods,
   fetchSupabaseOrders,
+  fetchSupabaseWaiters,
   createSupabaseOrder,
   updateSupabaseOrder,
   paySupabaseOrder,
@@ -87,18 +88,22 @@ export const RestoProvider = ({ children }) => {
   const [tables, setTables] = useState(DEFAULT_TABLES);
   const [menu, setMenu] = useState(DEFAULT_MENU);
   const [orders, setOrders] = useState([]);
+  const [waiters, setWaiters] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [stats, setStats] = useState(() => computeStats([], DEFAULT_MENU, DEFAULT_TABLES));
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pos');
 
+  // Waiter & Lock holati
+  const [isLocked, setIsLocked] = useState(true);
+  const [activeWaiter, setActiveWaiter] = useState(null);
+
   // POS Savatcha
   const [selectedTable, setSelectedTable] = useState(null);
   const [cart, setCart] = useState([]);
   const [serviceChargeRate, setServiceChargeRate] = useState(10);
   const [discountRate, setDiscountRate] = useState(0);
-  const [waiterName, setWaiterName] = useState("Alisher");
   const [orderNotes, setOrderNotes] = useState("");
 
   // Modallar
@@ -121,15 +126,17 @@ export const RestoProvider = ({ children }) => {
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [fetchedTables, fetchedFoods, fetchedOrders] = await Promise.all([
+      const [fetchedTables, fetchedFoods, fetchedOrders, fetchedWaiters] = await Promise.all([
         fetchSupabaseTables(),
         fetchSupabaseFoods(),
-        fetchSupabaseOrders()
+        fetchSupabaseOrders(),
+        fetchSupabaseWaiters()
       ]);
 
       if (fetchedTables && fetchedTables.length > 0) setTables(fetchedTables);
       if (fetchedFoods && fetchedFoods.length > 0) setMenu(fetchedFoods);
       if (fetchedOrders) setOrders(fetchedOrders);
+      if (fetchedWaiters) setWaiters(fetchedWaiters);
 
       setStats(computeStats(fetchedOrders || [], fetchedFoods || DEFAULT_MENU, fetchedTables || DEFAULT_TABLES));
     } catch (err) {
@@ -212,7 +219,6 @@ export const RestoProvider = ({ children }) => {
         setCart(activeOrder.items.map(item => ({ ...item })));
         setServiceChargeRate(activeOrder.serviceChargeRate ?? 10);
         setDiscountRate(activeOrder.discountRate ?? 0);
-        setWaiterName(activeOrder.waiterName || "Alisher");
         setOrderNotes(activeOrder.notes || "");
         return;
       }
@@ -315,7 +321,7 @@ export const RestoProvider = ({ children }) => {
           totalAmount,
           totalCost,
           netProfit,
-          waiterName,
+          waiterName: activeWaiter ? activeWaiter.name : "Admin",
           notes: orderNotes
         });
 
@@ -329,7 +335,8 @@ export const RestoProvider = ({ children }) => {
           orderNumber: tempOrderNum,
           tableId: selectedTable.id,
           tableNumber: selectedTable.number,
-          waiterName: waiterName || "Alisher",
+          waiterName: activeWaiter ? activeWaiter.name : "Admin",
+          waiterId: activeWaiter ? activeWaiter.id : null,
           items: cart,
           subtotal,
           totalCost,
@@ -404,6 +411,12 @@ export const RestoProvider = ({ children }) => {
         setMenu,
         orders,
         setOrders,
+        waiters,
+        setWaiters,
+        isLocked,
+        setIsLocked,
+        activeWaiter,
+        setActiveWaiter,
         stats,
         settings,
         setSettings,

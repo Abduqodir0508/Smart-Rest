@@ -36,8 +36,7 @@ const PosView = () => {
     setServiceChargeRate,
     discountRate,
     setDiscountRate,
-    waiterName,
-    setWaiterName,
+    activeWaiter,
     orderNotes,
     setOrderNotes,
     cartSubtotal,
@@ -371,13 +370,9 @@ const PosView = () => {
                 </h2>
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
                   <User className="w-3 h-3 text-slate-500" />
-                  <input
-                    type="text"
-                    value={waiterName}
-                    onChange={(e) => setWaiterName(e.target.value)}
-                    placeholder="Ofitsiant"
-                    className="bg-transparent border-b border-dashed border-slate-700 text-slate-300 focus:outline-none focus:border-orange-500 w-20 sm:w-24 text-xs"
-                  />
+                  <span className="text-slate-300 font-medium">
+                    {activeWaiter ? activeWaiter.name : "Admin"}
+                  </span>
                 </div>
               </div>
             </div>

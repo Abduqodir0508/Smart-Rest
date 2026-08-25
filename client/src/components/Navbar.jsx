@@ -15,7 +15,7 @@ import { useResto } from '../context/RestoContext';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const { activeTab, setActiveTab, orders, tables, settings, loadAllData } = useResto();
+  const { activeTab, setActiveTab, orders, tables, settings, loadAllData, activeWaiter, setIsLocked } = useResto();
   const { user, signOut } = useAuth();
   const [time, setTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -70,7 +70,16 @@ const Navbar = () => {
       label: 'Admin Panel',
       shortLabel: 'Admin',
       icon: LayoutDashboard,
-      badge: null
+      badge: null,
+      adminOnly: true
+    },
+    {
+      id: 'waiters',
+      label: 'Xodimlar',
+      shortLabel: 'Xodimlar',
+      icon: User,
+      badge: null,
+      adminOnly: true
     }
   ];
 
@@ -111,9 +120,12 @@ const Navbar = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
             </button>
             <button
-              onClick={signOut}
-              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-rose-400 border border-rose-500/30"
-              title="Chiqish"
+              onClick={() => {
+                setIsLocked(true);
+                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
+              }}
+              className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg text-orange-400 border border-orange-500/30"
+              title="Qulflash"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -123,6 +135,8 @@ const Navbar = () => {
         {/* Asosiy Navigatsiya Tugmalari (Gorizontal Scrollable) */}
         <nav className="w-full md:w-auto flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 overflow-x-auto no-scrollbar max-w-full">
           {navItems.map((item) => {
+            if (item.adminOnly && activeWaiter?.role !== 'admin') return null;
+
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
@@ -170,13 +184,27 @@ const Navbar = () => {
             </button>
 
             <button
-              onClick={signOut}
-              title={`Chiqish (${user?.email || 'Foydalanuvchi'})`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
+              onClick={() => {
+                setIsLocked(true);
+                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
+              }}
+              title="Qulflash"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Chiqish</span>
+              <span>Qulflash</span>
             </button>
+            
+            {activeWaiter?.role === 'admin' && (
+              <button
+                onClick={signOut}
+                title="Sistemadan Chiqish"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Chiqish</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
