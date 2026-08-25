@@ -562,7 +562,7 @@ const PosView = () => {
                   setReceiptOrder({
                     orderNumber: "PREVIEW",
                     tableNumber: selectedTable?.number || "Stol",
-                    waiterName,
+                    waiterName: activeWaiter?.name || "Admin",
                     items: cart,
                     subtotal: cartSubtotal,
                     serviceChargeRate,

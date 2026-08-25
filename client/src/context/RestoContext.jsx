@@ -435,8 +435,6 @@ export const RestoProvider = ({ children }) => {
         setServiceChargeRate,
         discountRate,
         setDiscountRate,
-        waiterName,
-        setWaiterName,
         orderNotes,
         setOrderNotes,
         cartSubtotal,
