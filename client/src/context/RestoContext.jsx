@@ -114,13 +114,24 @@ export const RestoProvider = ({ children }) => {
 
   // Toast bildirishnoma
   const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  const fadeOutTimerRef = useRef(null);
 
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type, id: Date.now() });
-    setTimeout(() => {
-      setToast((prev) => (prev?.id === toast?.id ? null : prev));
-    }, 4000);
-  };
+  const showToast = useCallback((message, type = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    
+    const id = Date.now();
+    setToast({ message, type, id, isVisible: true });
+    
+    toastTimerRef.current = setTimeout(() => {
+      setToast((prev) => (prev?.id === id ? { ...prev, isVisible: false } : prev));
+      
+      fadeOutTimerRef.current = setTimeout(() => {
+        setToast((prev) => (prev?.id === id ? null : prev));
+      }, 300);
+    }, 3000);
+  }, []);
 
   // 1. Supabase Bazasidan Ma'lumotlarni Yuklash
   const loadAllData = useCallback(async () => {

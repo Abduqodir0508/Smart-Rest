@@ -25,7 +25,7 @@ const Dashboard = () => {
     return (
       <>
         {toast && (
-          <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-5 duration-300">
+          <div className={`fixed bottom-5 right-5 z-50 duration-300 ${toast.isVisible ? 'animate-in slide-in-from-bottom-5 fade-in' : 'animate-out slide-out-to-bottom-5 fade-out'}`}>
             <div
               className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${
                 toast.type === 'success'
@@ -57,7 +57,7 @@ const Dashboard = () => {
 
       {/* Toast Notification Container */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-5 duration-300">
+        <div className={`fixed bottom-5 right-5 z-50 duration-300 ${toast.isVisible ? 'animate-in slide-in-from-bottom-5 fade-in' : 'animate-out slide-out-to-bottom-5 fade-out'}`}>
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${
               toast.type === 'success'
