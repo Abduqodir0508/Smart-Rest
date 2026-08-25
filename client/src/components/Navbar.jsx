@@ -120,10 +120,7 @@ const Navbar = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
             </button>
             <button
-              onClick={() => {
-                setIsLocked(true);
-                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
-              }}
+              onClick={() => signOut()}
               className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-rose-400 border border-rose-500/30"
               title="Chiqish"
             >
@@ -184,10 +181,7 @@ const Navbar = () => {
             </button>
 
             <button
-              onClick={() => {
-                setIsLocked(true);
-                if (activeWaiter?.role !== 'admin') setActiveTab('pos');
-              }}
+              onClick={() => signOut()}
               title="Tizimdan Chiqish"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
             >
