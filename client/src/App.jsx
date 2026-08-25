@@ -1,17 +1,21 @@
 import React from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { RestoProvider, useResto } from './context/RestoContext';
+import AuthView from './views/AuthView';
 import Navbar from './components/Navbar';
 import PosView from './views/PosView';
 import KitchenView from './views/KitchenView';
 import AdminView from './views/AdminView';
 import OrdersView from './views/OrdersView';
+import ProductsView from './views/ProductsView';
 import ReceiptModal from './components/ReceiptModal';
 import PaymentModal from './components/PaymentModal';
 import MenuItemModal from './components/MenuItemModal';
 import TableModal from './components/TableModal';
-import { CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, AlertTriangle, Loader2 } from 'lucide-react';
+import ProtectedRoute from './components/ProtectedRoute';
 
-const MainLayout = () => {
+const Dashboard = () => {
   const { activeTab, toast } = useResto();
 
   return (
@@ -46,6 +50,7 @@ const MainLayout = () => {
       <main className="flex-1 flex flex-col">
         {activeTab === 'pos' && <PosView />}
         {activeTab === 'kitchen' && <KitchenView />}
+        {activeTab === 'products' && <ProductsView />}
         {activeTab === 'admin' && <AdminView />}
         {activeTab === 'orders' && <OrdersView />}
       </main>
@@ -61,8 +66,12 @@ const MainLayout = () => {
 
 export default function App() {
   return (
-    <RestoProvider>
-      <MainLayout />
-    </RestoProvider>
+    <AuthProvider>
+      <ProtectedRoute>
+        <RestoProvider>
+          <Dashboard />
+        </RestoProvider>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }

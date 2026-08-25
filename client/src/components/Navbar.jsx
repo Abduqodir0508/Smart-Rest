@@ -6,12 +6,17 @@ import {
   History, 
   Clock, 
   Store,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  User,
+  Package
 } from 'lucide-react';
 import { useResto } from '../context/RestoContext';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const { activeTab, setActiveTab, orders, tables, settings, loadAllData } = useResto();
+  const { user, signOut } = useAuth();
   const [time, setTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -45,6 +50,13 @@ const Navbar = () => {
       icon: ChefHat,
       badge: activeOrdersCount > 0 ? activeOrdersCount : null,
       badgeColor: 'bg-amber-500 text-slate-950 font-bold animate-pulse'
+    },
+    {
+      id: 'products',
+      label: 'Tovarlar',
+      shortLabel: 'Tovarlar',
+      icon: Package,
+      badge: null
     },
     {
       id: 'orders',
@@ -98,6 +110,13 @@ const Navbar = () => {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
             </button>
+            <button
+              onClick={signOut}
+              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-rose-400 border border-rose-500/30"
+              title="Chiqish"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -133,25 +152,34 @@ const Navbar = () => {
           })}
         </nav>
 
-        {/* Desktop Soat va Yangilash */}
-        <div className="hidden md:flex items-center gap-3 text-slate-300">
-          <div className="flex items-center gap-2 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800 text-xs">
-            <Clock className="w-3.5 h-3.5 text-orange-400" />
-            <span className="font-mono font-medium">
-              {time.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          </div>
+          {/* Desktop Soat, Yangilash va Chiqish */}
+          <div className="hidden md:flex items-center gap-2.5 text-slate-300">
+            <div className="flex items-center gap-2 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800 text-xs">
+              <Clock className="w-3.5 h-3.5 text-orange-400" />
+              <span className="font-mono font-medium">
+                {time.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            </div>
 
-          <button
-            onClick={handleRefresh}
-            title="Ma'lumotlarni yangilash"
-            className="p-2 bg-slate-800/60 hover:bg-slate-800 rounded-lg border border-slate-700/50 text-slate-300 hover:text-orange-400 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
-          </button>
+            <button
+              onClick={handleRefresh}
+              title="Ma'lumotlarni yangilash"
+              className="p-2 bg-slate-800/60 hover:bg-slate-800 rounded-lg border border-slate-700/50 text-slate-300 hover:text-orange-400 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-400' : ''}`} />
+            </button>
+
+            <button
+              onClick={signOut}
+              title={`Chiqish (${user?.email || 'Foydalanuvchi'})`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Chiqish</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
   );
 };
 

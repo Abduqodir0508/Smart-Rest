@@ -144,6 +144,9 @@ export const fetchSupabaseOrders = async () => {
 // ==========================================
 
 export const createSupabaseOrder = async (orderData) => {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData?.user?.id;
+
   const payload = {
     order_number: orderData.orderNumber,
     table_id: orderData.tableId,
@@ -161,6 +164,7 @@ export const createSupabaseOrder = async (orderData) => {
     status: orderData.status || 'pending',
     payment_status: 'unpaid',
     notes: orderData.notes || '',
+    restaurant_id: userId,
     created_at: new Date().toISOString()
   };
 
