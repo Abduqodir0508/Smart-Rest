@@ -124,8 +124,8 @@ const Navbar = () => {
                 setIsLocked(true);
                 if (activeWaiter?.role !== 'admin') setActiveTab('pos');
               }}
-              className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg text-orange-400 border border-orange-500/30"
-              title="Qulflash"
+              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-rose-400 border border-rose-500/30"
+              title="Chiqish"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -188,23 +188,12 @@ const Navbar = () => {
                 setIsLocked(true);
                 if (activeWaiter?.role !== 'admin') setActiveTab('pos');
               }}
-              title="Qulflash"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium transition-colors"
+              title="Tizimdan Chiqish"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Qulflash</span>
+              <span>Chiqish</span>
             </button>
-            
-            {activeWaiter?.role === 'admin' && (
-              <button
-                onClick={signOut}
-                title="Sistemadan Chiqish"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium transition-colors"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Chiqish</span>
-              </button>
-            )}
           </div>
         </div>
       </header>

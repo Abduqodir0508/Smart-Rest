@@ -21,8 +21,7 @@ import { formatCurrency } from '../utils/helpers';
 import api from '../services/api';
 
 const AdminView = () => {
-  const { stats, menu, setMenu, settings, setSettings, setMenuModalData, loadAllData, showToast } = useResto();
-  const { signOut } = useAuth();
+  const { stats, menu, setMenu, settings, setSettings, setMenuModalData, loadAllData, showToast, setIsLocked } = useResto();
   const [activeAdminSubtab, setActiveAdminSubtab] = useState('menu');
   const [filterCat, setFilterCat] = useState('Barchasi');
 
@@ -539,15 +538,11 @@ const AdminView = () => {
           <div className="mt-6 pt-6 border-t border-slate-800">
             <button
               type="button"
-              onClick={async () => {
-                if (window.confirm("Rostdan ham tizimdan to'liq chiqmoqchimisiz? Barcha tokenlar o'chiriladi.")) {
-                  await signOut();
-                }
-              }}
+              onClick={() => setIsLocked(true)}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-500/20 rounded-xl text-sm font-bold transition-all active:scale-95"
             >
               <LogOut className="w-5 h-5" />
-              <span>Tizimdan to'liq chiqish (Sign Out)</span>
+              <span>Tizimdan chiqish</span>
             </button>
           </div>
         </div>
