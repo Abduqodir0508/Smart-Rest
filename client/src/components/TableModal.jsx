@@ -35,9 +35,12 @@ const TableModal = () => {
       const userId = userData?.user?.id;
 
       const payload = {
-        table_number: num,
-        zone: formData.zone,
+        name: num,
+        number: String(num),
+        table_number: String(num),
+        zone: formData.zone || 'Asosiy Zal',
         capacity: Number(formData.capacity) || 4,
+        seats: Number(formData.capacity) || 4,
         status: 'available',
         user_id: userId
       };
