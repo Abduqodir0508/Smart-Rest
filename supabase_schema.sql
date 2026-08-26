@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. Stollar jadvali
 CREATE TABLE IF NOT EXISTS tables (
   id BIGSERIAL PRIMARY KEY,
-  number VARCHAR(50) NOT NULL,
+  table_number VARCHAR(50) NOT NULL,
   zone VARCHAR(50) DEFAULT 'Asosiy Zal',
   capacity INT DEFAULT 4,
   status VARCHAR(20) DEFAULT 'empty',
