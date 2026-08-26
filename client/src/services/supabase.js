@@ -73,7 +73,7 @@ export const fetchSupabaseTables = async () => {
     const userId = userData?.user?.id;
     if (!userId) return [];
 
-    const { data, error } = await supabase.from('tables').select('*').eq('restaurant_id', userId).order('id', { ascending: true });
+    const { data, error } = await supabase.from('tables').select('*').eq('user_id', userId).order('id', { ascending: true });
     if (error) throw error;
     if (data && data.length > 0) {
       return data.map(normalizeTable);
@@ -93,10 +93,10 @@ export const fetchSupabaseFoods = async () => {
     if (!userId) return [];
 
     // Avval 'foods' jadvalini tekshirish
-    let { data, error } = await supabase.from('foods').select('*').eq('restaurant_id', userId).order('id', { ascending: true });
+    let { data, error } = await supabase.from('foods').select('*').eq('user_id', userId).order('id', { ascending: true });
     if (error) {
       // Agar 'foods' bo'lmasa, 'menu' jadvalini tekshirish
-      const menuRes = await supabase.from('menu').select('*').eq('restaurant_id', userId).order('id', { ascending: true });
+      const menuRes = await supabase.from('menu').select('*').eq('user_id', userId).order('id', { ascending: true });
       data = menuRes.data;
       error = menuRes.error;
     }
@@ -118,7 +118,7 @@ export const fetchSupabaseOrders = async () => {
     const userId = userData?.user?.id;
     if (!userId) return [];
 
-    const { data, error } = await supabase.from('orders').select('*').eq('restaurant_id', userId).order('id', { ascending: false });
+    const { data, error } = await supabase.from('orders').select('*').eq('user_id', userId).order('id', { ascending: false });
     if (error) throw error;
     return (data || []).map(normalizeOrder);
   } catch (err) {
@@ -133,7 +133,7 @@ export const fetchSupabaseWaiters = async () => {
     const userId = userData?.user?.id;
     if (!userId) return [];
 
-    const { data, error } = await supabase.from('waiters').select('*').eq('restaurant_id', userId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('waiters').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   } catch (err) {
@@ -168,7 +168,7 @@ export const createSupabaseOrder = async (orderData) => {
     status: orderData.status || 'pending',
     payment_status: 'unpaid',
     notes: orderData.notes || '',
-    restaurant_id: userId,
+    user_id: userId,
     created_at: new Date().toISOString()
   };
 

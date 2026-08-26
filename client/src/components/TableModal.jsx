@@ -38,8 +38,8 @@ const TableModal = () => {
         table_number: num,
         zone: formData.zone,
         capacity: Number(formData.capacity) || 4,
-        status: 'empty',
-        restaurant_id: userId
+        status: 'available',
+        user_id: userId
       };
 
       const { error } = await supabase.from('tables').insert(payload);

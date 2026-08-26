@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS tables (
   active_order_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE tables ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE tables ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- 2. Menyu jadvali
 CREATE TABLE IF NOT EXISTS menu (
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS menu (
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE menu ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- Foods jadvali (alternativa sifatida ishlatilmoqda)
 CREATE TABLE IF NOT EXISTS foods (
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS foods (
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE foods ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE foods ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- Products jadvali (tovarlar sahifasi uchun)
 CREATE TABLE IF NOT EXISTS products (
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS products (
   image TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE products ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- Waiters jadvali
 CREATE TABLE IF NOT EXISTS waiters (
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS waiters (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE waiters ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE waiters ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- 3. Buyurtmalar jadvali
 CREATE TABLE IF NOT EXISTS orders (
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS restaurant_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS waiter_id BIGINT REFERENCES waiters(id) ON DELETE SET NULL;
 
 -- ========================================================
@@ -116,30 +116,30 @@ DROP POLICY IF EXISTS "Products policy" ON products;
 DROP POLICY IF EXISTS "Waiters policy" ON waiters;
 DROP POLICY IF EXISTS "Orders policy" ON orders;
 
--- Barcha jadvallar uchun restaurant_id orqali siyosatlar (Policies)
+-- Barcha jadvallar uchun user_id orqali siyosatlar (Policies)
 -- Tables
 CREATE POLICY "Tables policy" ON tables
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Menu
 CREATE POLICY "Menu policy" ON menu
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Foods
 CREATE POLICY "Foods policy" ON foods
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Products
 CREATE POLICY "Products policy" ON products
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Waiters
 CREATE POLICY "Waiters policy" ON waiters
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Orders
 CREATE POLICY "Orders policy" ON orders
-FOR ALL USING (auth.uid() = restaurant_id) WITH CHECK (auth.uid() = restaurant_id);
+FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 4. Realtime Broadcast ruxsatlarini yoqish
 -- Jadvallarni alohida-alohida qo'shib chiqamiz, shunda allaqachon qo'shilganlari xato bermaydi
