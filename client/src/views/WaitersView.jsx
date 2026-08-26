@@ -90,7 +90,7 @@ export default function WaitersView() {
           name: formData.name,
           phone: formData.phone,
           pin_code: formData.pin_code,
-          restaurant_id: user?.id,
+          user_id: user?.id,
         };
 
         const { data, error } = await supabase
