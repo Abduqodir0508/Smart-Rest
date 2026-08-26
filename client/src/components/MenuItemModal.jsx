@@ -3,6 +3,7 @@ import { X, Plus, Save, Image as ImageIcon, Calculator, Percent, Sparkles } from
 import { useResto } from '../context/RestoContext';
 import api from '../services/api';
 import { formatCurrency } from '../utils/helpers';
+import { supabase } from '../services/supabase';
 
 const CATEGORIES = [
   "Milliy taomlar",
@@ -79,17 +80,31 @@ const MenuItemModal = () => {
 
     setIsSubmitting(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      const payload = {
+        name: formData.name,
+        category: formData.category,
+        price: priceNum,
+        cost_price: costNum,
+        prep_time: Number(formData.prepTime) || 15,
+        available: formData.available,
+        image: formData.image,
+        description: formData.description,
+        user_id: userId
+      };
+
       if (isEdit) {
-        const res = await api.updateMenuItem(menuModalData.id, formData);
-        if (res.success) {
-          showToast(`"${formData.name}" taomi yangilandi`, "success");
-        }
+        const { error } = await supabase.from('foods').update(payload).eq('id', menuModalData.id);
+        if (error) throw error;
+        showToast(`"${formData.name}" taomi yangilandi`, "success");
       } else {
-        const res = await api.createMenuItem(formData);
-        if (res.success) {
-          showToast(`Yangi taom "${formData.name}" qo'shildi`, "success");
-        }
+        const { error } = await supabase.from('foods').insert(payload);
+        if (error) throw error;
+        showToast(`Yangi taom "${formData.name}" qo'shildi`, "success");
       }
+      
       await loadAllData();
       setMenuModalData(null);
     } catch (error) {
