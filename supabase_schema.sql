@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS foods (
   price NUMERIC(12, 2) NOT NULL,
   cost_price NUMERIC(12, 2) NOT NULL,
   prep_time INT DEFAULT 15,
-  available BOOLEAN DEFAULT TRUE,
+  is_available BOOLEAN DEFAULT TRUE,
   image TEXT,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()

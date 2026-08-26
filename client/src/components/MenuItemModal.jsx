@@ -85,13 +85,11 @@ const MenuItemModal = () => {
 
       const payload = {
         name: formData.name,
-        category: formData.category,
         price: priceNum,
         cost_price: costNum,
-        prep_time: Number(formData.prepTime) || 15,
-        available: formData.available,
-        image: formData.image,
-        description: formData.description,
+        category: formData.category,
+        description: formData.description || '',
+        is_available: formData.available,
         user_id: userId
       };
 
