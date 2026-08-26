@@ -31,11 +31,15 @@ const TableModal = () => {
         num = `${num}-Stol`;
       }
 
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
       const payload = {
         number: num,
         zone: formData.zone,
         capacity: Number(formData.capacity) || 4,
-        status: 'empty'
+        status: 'empty',
+        restaurant_id: userId
       };
 
       const { error } = await supabase.from('tables').insert(payload);

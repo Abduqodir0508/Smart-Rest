@@ -118,58 +118,73 @@ const PosView = () => {
           </div>
 
           {/* Stollar Grid (Mobil: 2-3 ustun, Katta ekranda: 5 ustun) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5">
-            {filteredTables.map((table) => {
-              const isSelected = selectedTable?.id === table.id;
-              const tableOrder = orders.find(o => o.id === table.activeOrderId && o.paymentStatus === 'unpaid');
-              const isOccupied = table.status === 'occupied' || Boolean(tableOrder);
-              const isBilled = table.status === 'billed';
+          {tables.length === 0 ? (
+            <div className="col-span-full py-12 flex flex-col items-center justify-center text-center text-slate-400 bg-slate-950/40 rounded-2xl border border-slate-800/60 mt-4">
+              <Armchair className="w-12 h-12 text-slate-600 mb-3" />
+              <p className="font-semibold text-base text-slate-200">Hozircha stollar mavjud emas</p>
+              <p className="text-sm text-slate-500 mt-1 mb-4">Iltimos, yangi stol qo'shing</p>
+              <button
+                onClick={() => setTableModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold shadow-md transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Stol Qo'shish</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5">
+              {filteredTables.map((table) => {
+                const isSelected = selectedTable?.id === table.id;
+                const tableOrder = orders.find(o => o.id === table.activeOrderId && o.paymentStatus === 'unpaid');
+                const isOccupied = table.status === 'occupied' || Boolean(tableOrder);
+                const isBilled = table.status === 'billed';
 
-              return (
-                <button
-                  key={table.id}
-                  onClick={() => handleSelectTable(table)}
-                  className={`relative p-2.5 sm:p-3 rounded-xl border transition-all duration-200 text-left flex flex-col justify-between h-20 sm:h-24 ${
-                    isSelected
-                      ? 'ring-2 ring-orange-500 bg-orange-500/15 border-orange-500 shadow-glow'
-                      : isBilled
-                      ? 'bg-amber-500/10 border-amber-500/40 hover:border-amber-400'
-                      : isOccupied
-                      ? 'bg-rose-500/10 border-rose-500/30 hover:border-rose-400'
-                      : 'bg-slate-900/50 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs sm:text-sm text-slate-100">
-                      {table.number || `${table.id}-Stol`}
-                    </span>
-                    <span
-                      className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
-                        isBilled
-                          ? 'bg-amber-400 animate-pulse'
-                          : isOccupied
-                          ? 'bg-rose-500'
-                          : 'bg-emerald-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="text-[10px] sm:text-[11px] text-slate-400 flex items-center justify-between">
-                    <span className="truncate max-w-[60px]">{table.zone}</span>
-                    <span>{table.capacity} kishi</span>
-                  </div>
-
-                  {tableOrder ? (
-                    <div className="text-[10px] sm:text-[11px] font-mono font-bold text-orange-400 truncate">
-                      {formatCurrency(tableOrder.totalAmount)}
+                return (
+                  <button
+                    key={table.id}
+                    onClick={() => handleSelectTable(table)}
+                    className={`relative p-2.5 sm:p-3 rounded-xl border transition-all duration-200 text-left flex flex-col justify-between h-20 sm:h-24 ${
+                      isSelected
+                        ? 'ring-2 ring-orange-500 bg-orange-500/15 border-orange-500 shadow-glow'
+                        : isBilled
+                        ? 'bg-amber-500/10 border-amber-500/40 hover:border-amber-400'
+                        : isOccupied
+                        ? 'bg-rose-500/10 border-rose-500/30 hover:border-rose-400'
+                        : 'bg-slate-900/50 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-xs sm:text-sm text-slate-100">
+                        {table.number || `${table.id}-Stol`}
+                      </span>
+                      <span
+                        className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${
+                          isBilled
+                            ? 'bg-amber-400 animate-pulse'
+                            : isOccupied
+                            ? 'bg-rose-500'
+                            : 'bg-emerald-400'
+                        }`}
+                      />
                     </div>
-                  ) : (
-                    <div className="text-[9px] sm:text-[10px] text-emerald-400 font-medium">Bo'sh</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+
+                    <div className="text-[10px] sm:text-[11px] text-slate-400 flex items-center justify-between">
+                      <span className="truncate max-w-[60px]">{table.zone}</span>
+                      <span>{table.capacity} kishi</span>
+                    </div>
+
+                    {tableOrder ? (
+                      <div className="text-[10px] sm:text-[11px] font-mono font-bold text-orange-400 truncate">
+                        {formatCurrency(tableOrder.totalAmount)}
+                      </div>
+                    ) : (
+                      <div className="text-[9px] sm:text-[10px] text-emerald-400 font-medium">Bo'sh</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 2. Menyu Boshqaruvi: Qidiruv, Toifalar va Taomlar */}

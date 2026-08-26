@@ -78,28 +78,11 @@ export const fetchSupabaseTables = async () => {
     if (data && data.length > 0) {
       return data.map(normalizeTable);
     }
-    // Agar baza bo'sh bo'lsa, birlamchi stollarni joylash (Auto-Seed)
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
     
-    if (userId) {
-      const seedData = DEFAULT_TABLES.map(t => ({
-        id: t.id,
-        restaurant_id: userId,
-        number: t.number,
-        zone: t.zone,
-        capacity: t.capacity,
-        status: t.status,
-        active_order_id: t.activeOrderId
-      }));
-      try {
-        await supabase.from('tables').insert(seedData);
-      } catch (e) {}
-    }
-    return DEFAULT_TABLES;
+    return [];
   } catch (err) {
     console.warn("Supabase tables xatolik:", err.message);
-    return DEFAULT_TABLES;
+    return [];
   }
 };
 
@@ -121,30 +104,11 @@ export const fetchSupabaseFoods = async () => {
     if (data && data.length > 0) {
       return data.map(normalizeFood);
     }
-    // Agar baza bo'sh bo'lsa, birlamchi taomlarni kiritish
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
     
-    if (userId) {
-      const seedFoods = DEFAULT_MENU.map(m => ({
-        id: m.id,
-        restaurant_id: userId,
-        name: m.name,
-        category: m.category,
-        price: m.price,
-        cost_price: m.costPrice,
-        prep_time: m.prepTime,
-        available: m.available,
-        description: m.description
-      }));
-      try {
-        await supabase.from('foods').insert(seedFoods);
-      } catch (e) {}
-    }
-    return DEFAULT_MENU;
+    return [];
   } catch (err) {
     console.warn("Supabase foods xatolik:", err.message);
-    return DEFAULT_MENU;
+    return [];
   }
 };
 
