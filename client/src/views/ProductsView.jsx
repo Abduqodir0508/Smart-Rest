@@ -43,11 +43,13 @@ export default function ProductsView() {
 
   // 1. Tovarlarni Supabase-dan yuklab olish (RLS avtomatik ravishda faqat shu restoranning tovarlarini qaytaradi)
   const fetchProducts = async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('restaurant_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
