@@ -75,17 +75,23 @@ export const fetchSupabaseTables = async () => {
       return data.map(normalizeTable);
     }
     // Agar baza bo'sh bo'lsa, birlamchi stollarni joylash (Auto-Seed)
-    const seedData = DEFAULT_TABLES.map(t => ({
-      id: t.id,
-      number: t.number,
-      zone: t.zone,
-      capacity: t.capacity,
-      status: t.status,
-      active_order_id: t.activeOrderId
-    }));
-    try {
-      await supabase.from('tables').insert(seedData);
-    } catch (e) {}
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    
+    if (userId) {
+      const seedData = DEFAULT_TABLES.map(t => ({
+        id: t.id,
+        restaurant_id: userId,
+        number: t.number,
+        zone: t.zone,
+        capacity: t.capacity,
+        status: t.status,
+        active_order_id: t.activeOrderId
+      }));
+      try {
+        await supabase.from('tables').insert(seedData);
+      } catch (e) {}
+    }
     return DEFAULT_TABLES;
   } catch (err) {
     console.warn("Supabase tables xatolik:", err.message);
@@ -108,19 +114,25 @@ export const fetchSupabaseFoods = async () => {
       return data.map(normalizeFood);
     }
     // Agar baza bo'sh bo'lsa, birlamchi taomlarni kiritish
-    const seedFoods = DEFAULT_MENU.map(m => ({
-      id: m.id,
-      name: m.name,
-      category: m.category,
-      price: m.price,
-      cost_price: m.costPrice,
-      prep_time: m.prepTime,
-      available: m.available,
-      description: m.description
-    }));
-    try {
-      await supabase.from('foods').insert(seedFoods);
-    } catch (e) {}
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    
+    if (userId) {
+      const seedFoods = DEFAULT_MENU.map(m => ({
+        id: m.id,
+        restaurant_id: userId,
+        name: m.name,
+        category: m.category,
+        price: m.price,
+        cost_price: m.costPrice,
+        prep_time: m.prepTime,
+        available: m.available,
+        description: m.description
+      }));
+      try {
+        await supabase.from('foods').insert(seedFoods);
+      } catch (e) {}
+    }
     return DEFAULT_MENU;
   } catch (err) {
     console.warn("Supabase foods xatolik:", err.message);
