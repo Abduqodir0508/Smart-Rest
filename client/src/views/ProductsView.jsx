@@ -49,7 +49,7 @@ export default function ProductsView() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('restaurant_id', user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -126,24 +126,28 @@ export default function ProductsView() {
           )
         );
       } else {
-        // INSERT: Yangi tovar qo'shish (restaurant_id ga auth.uid qo'shiladi)
+        // INSERT: Yangi tovar qo'shish
         const newProductPayload = {
           name: formData.name,
-          category: formData.category,
-          price: parseFloat(formData.price),
-          description: formData.description,
-          image: formData.image,
-          restaurant_id: user?.id, // Supabase Auth UID biriktiriladi
+          category: formData.category || 'Barchasi',
+          price: Number(formData.price),
+          description: formData.description || '',
+          image: formData.image || '',
+          user_id: user?.id, 
         };
 
         const { data, error } = await supabase
           .from('products')
           .insert([newProductPayload])
-          .select()
-          .single();
+          .select();
 
-        if (error) throw error;
-        if (data) setProducts((prev) => [data, ...prev]);
+        if (error) {
+          console.error("Supabase insert error:", error);
+          alert(`Xatolik yuz berdi: ${error.message}`);
+          throw error;
+        } else if (data) {
+          setProducts((prev) => [...prev, ...data]);
+        }
       }
 
       closeModal();
